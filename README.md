@@ -1,6 +1,6 @@
 ---
 
-# Playwright Testing Framework Showcase
+# Playwright Testing Framework
 
 This project is a showcase of the Playwright testing framework using fictional data. It demonstrates how to use Playwright for UI and API testing, along with Knex.js for database interactions. Although the data used in this project is fictional, the structure and tests are fully functional and can be adapted for real-world applications.
 
