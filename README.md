@@ -33,7 +33,6 @@ Ensure you have the following installed on your system:
 
 - [Node.js](https://nodejs.org/) (>= 14.x)
 - [npm](https://www.npmjs.com/) (>= 6.x)
-- [MySQL](https://www.mysql.com/) or any other SQL database supported by Knex.js
 
 ### Installation
 
