@@ -6,17 +6,12 @@ This project is a showcase of the Playwright testing framework using fictional d
 
 ## Table of Contents
 
-- [Introduction](#introduction)
 - [Features](#features)
 - [Setup](#setup)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
 - [Usage](#usage)
   - [Running Tests](#running-tests)
-
-## Introduction
-
-This project serves as a comprehensive example of using the Playwright testing framework for both UI and API testing, alongside Knex.js for database interactions. The data and endpoints provided are fictional but can be replaced with real data and endpoints to create fully functional tests for your applications.
 
 ## Features
 
