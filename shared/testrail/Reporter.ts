@@ -1,0 +1,187 @@
+import TestRail, { AddResultsForCases } from "@dlenroc/testrail"
+import { FullConfig, FullResult, Reporter, Suite, TestCase, TestError, TestResult } from "@playwright/test/reporter"
+
+/**
+ * Mapping status within Playwright & TestRail
+ */
+const StatusMap = new Map<string, number>([
+	["failed", 5],
+	["passed", 1],
+	["skipped", 3],
+	["timedOut", 5],
+	["interrupted", 5],
+])
+
+const executionDateTime =  Date().toString().slice(4, 25)
+
+const api = new TestRail({
+	host: process.env.TESTRAIL_HOST as string,
+	password: process.env.TESTRAIL_PASSWORD as string,
+	username: process.env.TESTRAIL_USERNAME as string
+})
+
+const runName = process.env.TESTRAIL_RUN_NAME + " - Created On " + executionDateTime
+const projectId = parseInt(process.env.TESTRAIL_PROJECT_ID as string)
+let suiteId = parseInt(process.env.TESTRAIL_SUITE_ID as string)
+
+const testResults: AddResultsForCases[] = []
+
+export class TestRailReporter implements Reporter {
+	async onBegin?(config: FullConfig, suite: Suite) {
+		if (!process.env.TESTRAIL_RUN_ID) {
+			await addTestRailRun(projectId)
+
+		} else {
+			console.log("Existing Test Run with ID " + process.env.TESTRAIL_RUN_ID + " will be used")
+		}
+	}
+
+	onTestEnd(test: TestCase, result: TestResult) {
+		const testCaseMatches = getTestCaseName(test.title)
+		if (testCaseMatches != null) {
+
+			testCaseMatches.forEach(testCaseMatch => {
+				const testId = parseInt(testCaseMatch.substring(1), 10)
+
+				if (result.status != "skipped") {
+					const testComment = setTestComment(result)
+					const payload = {
+						case_id: testId,
+						status_id: StatusMap.get(result.status),
+						comment: testComment
+					}
+					testResults.push(payload)
+				}
+			})
+		}
+	}
+
+	async onEnd(result: FullResult): Promise<void> {
+		const runId = parseInt(process.env.TESTRAIL_RUN_ID as string)
+		await updateResultCases(runId, testResults)
+		await checkAndUpdateResults(runId);
+        await api.closeRun(runId);
+	}
+	onError(error: TestError): void {
+		console.log(error.message)
+	}
+}
+/**
+ * Get list of matching Test IDs
+ */
+export function getTestCaseName(testname: string) {
+	const testCaseIdRegex = /\bC(\d+)\b/g
+	const testCaseMatches = [testname.match(testCaseIdRegex)]
+
+	if (testCaseMatches[0] != null) {
+		testCaseMatches[0].forEach((testCaseMatch) => {
+			const testCaseId = parseInt(testCaseMatch.substring(1), 10)
+		})
+	}
+	else {
+		console.log("No test case matches available")
+	}
+	return testCaseMatches[0]
+}
+
+/**
+ * Create TestRail Test Run ID
+ * @param projectId
+ * @returns
+ */
+async function addTestRailRun(projectId: number) {
+	return await api.addRun(projectId, {
+		include_all: true,
+		name: runName,
+		suite_id: suiteId,
+	}).then(
+		(res) => {
+			process.env.TESTRAIL_RUN_ID = (res.id).toString()
+		},
+		(reason) => {
+			console.log("Failed to create new TestRail run: " + reason)
+		})
+}
+
+/**
+ * Add Test Result for TestSuite by Test Case ID/s
+ * @param api
+ * @param runId
+ * @param caseId
+ * @param status
+ */
+async function addResultForSuite(runId: number, caseId: number, status: number, comment: string) {
+	await api.addResultForCase(runId, caseId, {
+		status_id: status,
+		comment: comment
+	}).then((res) => { console.log("Updated status for caseId " + caseId + " for runId " + runId) },
+	(reason) => { console.log("Failed to call Update Api due to " + JSON.stringify(reason)) })
+}
+/**
+ * Set Test comment for TestCase Failed | Passed
+ * @param result
+ * @returns
+ */
+function setTestComment(result: TestResult) {
+	if (result.status == "failed" || result.status == "timedOut" || result.status == "interrupted") {
+		return "Test Status is " + result.status + " " + JSON.stringify(result.error)
+	}
+	else {
+		return "Test Passed within " + result.duration + " ms"
+	}
+}
+
+/**
+ * Update TestResult for Multiple Cases
+ * @param api
+ * @param runId
+ * @param payload
+ */
+async function updateResultCases(runId: number, payload: any) {
+	await api.addResultsForCases(runId, {
+		results: payload,
+	}).then(
+		(result) => {
+			console.log("Updated test results for Test Run: " + process.env.TESTRAIL_HOST +
+				"/index.php?/runs/view/" + runId)
+		},
+		(reason) => {
+			console.log("Failed to update test results: " + JSON.stringify(reason))
+		})
+}
+
+async function getTestResultsForRun(runId: number) {
+	return await api.getResultsForRun(runId);
+}
+
+/**
+ * Check for fails in iterations of TestCase
+ * @param runId 
+ * @returns 
+ */
+async function checkAndUpdateResults(runId: number) {
+	const results = await getTestResultsForRun(runId);
+
+	if (results.length === 0) {
+        console.log('No test results found.');
+        return;
+    }
+	
+	const groupedByTestId = results.reduce((acc, item) => {
+		if (!acc[item.test_id]) {
+		  acc[item.test_id] = [];
+		}
+		acc[item.test_id].push(item);
+		return acc;
+	  }, {});
+	
+	  Object.keys(groupedByTestId).forEach(async testId => {
+		const items = groupedByTestId[testId];
+		if (items.length > 1 && items.some(item => item.status_id === 5)) {
+			await api.addResult(parseInt(testId), {
+				status_id: 5,
+				comment: 'One or more test runs failed. Marking the test case as failed.',
+			})
+		}
+	  });
+}

@@ -1,0 +1,25 @@
+{
+  "name": "playwright-testing-framework",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx playwright test",
+    "test:dev": "ENVIRONMENT=dev npx playwright test",
+    "test:uat": "ENVIRONMENT=uat npx playwright test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.43.0",
+    "@types/node": "^20.12.3",
+    "allure-playwright": "^2.15.0"
+  },
+  "dependencies": {
+    "@dlenroc/testrail": "^1.9.1",
+    "dotenv": "^16.4.5",
+    "knex": "^3.1.0",
+    "pg": "^8.11.5"
+  }
+}

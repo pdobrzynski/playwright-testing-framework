@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+      "types": ["node"],
+      "baseUrl": ".",
+      "esModuleInterop": true,
+      "paths": {
+        "@pages/*":["pages/*"],
+        "@lib/*":["lib/*"],
+        "@shared/*":["shared/*"],
+        "@db/*":["database/*"],
+        "@api/*":["api/*"],
+      }
+    },
+  }
